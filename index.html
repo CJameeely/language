@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>花语 · Emotion Flower Field</title>
+    <style>
+        :root {
+            --panel: rgba(255, 255, 255, 0.72);
+            --line: rgba(35, 35, 35, 0.16);
+            --text: rgba(25, 25, 25, 0.85);
+            --subtext: rgba(25, 25, 25, 0.45);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            background:
+                radial-gradient(900px 560px at 50% 18%, rgba(255, 255, 255, 0.85), transparent 75%),
+                linear-gradient(180deg, #efefed 0%, #dfdfdc 100%);
+            color: var(--text);
+            font-family: "Avenir Next", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            letter-spacing: 0.02em;
+        }
+
+        .scene {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        #fieldCanvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            filter: saturate(0.72) contrast(0.94);
+        }
+
+        #faceVideo {
+            display: none;
+        }
+
+        .center-info {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -56%);
+            text-align: center;
+            pointer-events: none;
+            width: min(500px, 80vw);
+            z-index: 5;
+        }
+
+        .emotion {
+            font-size: clamp(28px, 4.4vw, 56px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-bottom: 12px;
+            color: rgba(22, 22, 22, 0.8);
+        }
+
+        .meta {
+            font-size: clamp(12px, 1.4vw, 15px);
+            color: var(--subtext);
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+        }
+
+        .control {
+            margin-top: 18px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            backdrop-filter: blur(3px);
+            border-radius: 999px;
+            pointer-events: auto;
+        }
+
+        button {
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.6);
+            color: var(--text);
+            padding: 8px 14px;
+            border-radius: 999px;
+            font-size: 12px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .webcam-panel {
+            position: absolute;
+            right: 22px;
+            bottom: 22px;
+            width: min(24vw, 280px);
+            min-width: 180px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            backdrop-filter: blur(3px);
+            padding: 10px;
+            z-index: 8;
+        }
+
+        .webcam-head {
+            font-size: 11px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--subtext);
+            margin-bottom: 8px;
+        }
+
+        #webcam-container {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            border: 1px solid var(--line);
+            background: rgba(243, 243, 241, 0.9);
+            overflow: hidden;
+        }
+
+        #webcam-container canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+        }
+
+        .label-strip {
+            margin-top: 8px;
+            max-height: 120px;
+            overflow: auto;
+            font-size: 11px;
+            color: var(--subtext);
+            border-top: 1px solid var(--line);
+            padding-top: 6px;
+        }
+
+        .label-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+        }
+
+        .label-item.top {
+            color: var(--text);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="scene">
+        <canvas id="fieldCanvas"></canvas>
+        <video id="faceVideo" autoplay muted playsinline></video>
+
+        <div class="center-info">
+            <div class="emotion" id="emotionName">---</div>
+            <div class="meta">
+                <div id="emotionConfidence">Press start</div>
+            </div>
+            <div class="control">
+                <button id="serialBtn" onclick="connectSerial()">⬡ Arduino</button>
+                <button id="startBtn" onclick="init()">Start</button>
+            </div>
+        </div>
+
+        <div class="webcam-panel">
+            <div class="webcam-head">Portrait Feed</div>
+            <div id="webcam-container">
+                <canvas id="webcamDisplay"></canvas>
+            </div>
+            <div class="label-strip" id="label-container"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js/dist/face-api.min.js"></script>
+    <script>
+        // ── Constants ──────────────────────────────────────────────────────────
+        const MODEL_URL        = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
+        const DETECT_INTERVAL  = 120;   // ms between detection calls
+        const SEND_INTERVAL    = 700;   // ms between serial sends
+        const FLY_DURATION_MS  = 3200;  // flower flight animation duration
+        const MAX_SETTLED      = 1400;  // max landed flowers on field
+
+        // ── Emotion → Arduino command (single char '0'–'3') ───────────────────
+        const EMOTION_TO_CMD = {
+            happy:     '2',  // 全开  120°
+            surprised: '3',  // 盛放  180°
+            neutral:   '1',  // 半开   60°
+            fearful:   '1',  // 半开   60°
+            sad:       '0',  // 合拢    0°
+            angry:     '0',
+            disgusted: '0',
+        };
+
+        // ── Color palettes (keys must match face-api.js output exactly) ────────
+        const EMOTION_PALETTES = {
+            happy:     ["#b5c38f","#d2c89f","#c0b89a","#b3bfa8","#d0b8a3"],
+            angry:     ["#b58e8d","#b8a19d","#9e8380","#b39b92","#a98079"],
+            sad:       ["#7f8ea6","#8b95ab","#6f829a","#8fa0b6","#76879f"],
+            disgusted: ["#95a38a","#a6af95","#8d9a7c","#9ba88c","#8d9a83"],
+            fearful:   ["#9b90aa","#a79db6","#8e86a2","#b1a5c0","#9589a8"],
+            neutral:   ["#b7b8b2","#c0bfb6","#aeb1ad","#c7c6be","#b5b6af"],
+            surprised: ["#94a9ad","#a6b8bb","#8ba1a6","#aebfc2","#95acb1"],
+        };
+
+        // ── State ──────────────────────────────────────────────────────────────
+        let isRunning    = false;
+        let inferInFlight = false;
+        let lastDetectAt = 0;
+
+        // Serial (Web Serial API)
+        let serialWriter  = null;
+        let lastCmd       = null;
+        let lastSendTime  = 0;
+
+        // ── DOM refs ───────────────────────────────────────────────────────────
+        const startBtn         = document.getElementById("startBtn");
+        const serialBtn        = document.getElementById("serialBtn");
+        const emotionName      = document.getElementById("emotionName");
+        const emotionConfidence = document.getElementById("emotionConfidence");
+        const labelContainer   = document.getElementById("label-container");
+        const video            = document.getElementById("faceVideo");
+        const webcamDisplay    = document.getElementById("webcamDisplay");
+
+        // ── Field canvas ───────────────────────────────────────────────────────
+        const canvas = document.getElementById("fieldCanvas");
+        const ctx    = canvas.getContext("2d");
+        let w = 0, h = 0, cx = 0, cy = 0, horizonY = 0;
+
+        const flyingFlowers  = [];
+        const settledFlowers = [];
+
+        // ── Helpers ────────────────────────────────────────────────────────────
+        function withTimeout(promise, ms, message) {
+            return Promise.race([
+                promise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
+            ]);
+        }
+
+        function resizeCanvas() {
+            w = window.innerWidth;
+            h = window.innerHeight;
+            cx = w * 0.5;
+            cy = h * 0.52;
+            horizonY = h * 0.28;
+            canvas.width  = w;
+            canvas.height = h;
+        }
+
+        function pickPaletteColor(emotion) {
+            const palette = EMOTION_PALETTES[emotion] || EMOTION_PALETTES.neutral;
+            return palette[Math.floor(Math.random() * palette.length)];
+        }
+
+        // ── Serial communication ───────────────────────────────────────────────
+        async function connectSerial() {
+            if (!navigator.serial) {
+                alert("Web Serial API not supported.\nPlease use Chrome or Edge.");
+                return;
+            }
+            try {
+                serialBtn.disabled = true;
+                const port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 9600 });
+                const enc = new TextEncoderStream();
+                enc.readable.pipeTo(port.writable);
+                serialWriter = enc.writable.getWriter();
+                await new Promise(r => setTimeout(r, 2000)); // wait for Arduino reset
+                serialBtn.textContent = '⬡ Connected';
+                serialBtn.style.color = 'rgba(50, 110, 50, 0.9)';
+            } catch (e) {
+                console.error('Serial connect failed:', e);
+                serialBtn.disabled = false;
+                serialBtn.textContent = '⬡ Arduino';
+            }
+        }
+
+        async function sendCmd(cmd) {
+            const now = Date.now();
+            if (cmd === lastCmd) return;
+            if (now - lastSendTime < SEND_INTERVAL) return;
+            if (!serialWriter) return;
+            try {
+                await serialWriter.write(cmd);
+                lastCmd = cmd;
+                lastSendTime = now;
+            } catch (e) {
+                console.error('Serial write error:', e);
+            }
+        }
+
+        // ── Flower animation ───────────────────────────────────────────────────
+        function spawnFlowerBurst(emotion, confidence) {
+            const amount = Math.round(8 + confidence * 14);
+            const now    = performance.now();
+            const spread = Math.max(220, w * 0.22);
+
+            for (let i = 0; i < amount; i++) {
+                const targetX  = cx + (Math.random() - 0.5) * spread * (1.15 + Math.random() * 2.4);
+                const targetY  = horizonY + Math.random() * (h * 0.34);
+                const size     = 8 + Math.random() * 16;
+                const rotation = Math.random() * Math.PI * 2;
+                const color    = pickPaletteColor(emotion);
+
+                flyingFlowers.push({
+                    startX:   cx + (Math.random() - 0.5) * 28,
+                    startY:   cy + (Math.random() - 0.5) * 22,
+                    targetX,
+                    targetY,
+                    size,
+                    rotation,
+                    color,
+                    createdAt: now + i * 24,
+                    duration:  FLY_DURATION_MS + Math.random() * 900,
+                    stem:      12 + Math.random() * 26,
+                });
+            }
+        }
+
+        function drawSoftFlower(x, y, size, rotation, color, alpha, stemLength = 0) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rotation);
+            ctx.globalAlpha = alpha;
+
+            if (stemLength > 0) {
+                ctx.strokeStyle = "rgba(90, 100, 86, 0.24)";
+                ctx.lineWidth   = 0.8;
+                ctx.beginPath();
+                ctx.moveTo(0, 6);
+                ctx.lineTo(0, stemLength);
+                ctx.stroke();
+            }
+
+            for (let p = 0; p < 5; p++) {
+                ctx.save();
+                ctx.rotate((Math.PI * 2 * p) / 5);
+                ctx.scale(1, 1.15);
+                ctx.beginPath();
+                ctx.ellipse(0, -size * 0.55, size * 0.28, size * 0.68, 0.24, 0, Math.PI * 2);
+                ctx.fillStyle = color;
+                ctx.fill();
+                ctx.restore();
+            }
+
+            ctx.beginPath();
+            ctx.arc(0, 0, size * 0.14, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(122, 106, 72, 0.55)";
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function renderFieldFrame(now) {
+            ctx.clearRect(0, 0, w, h);
+
+            ctx.fillStyle = "rgba(248, 248, 246, 0.65)";
+            ctx.fillRect(0, 0, w, horizonY + 20);
+
+            ctx.fillStyle = "rgba(217, 216, 209, 0.35)";
+            ctx.fillRect(0, horizonY, w, h - horizonY);
+
+            for (let i = flyingFlowers.length - 1; i >= 0; i--) {
+                const f = flyingFlowers[i];
+                const t = (now - f.createdAt) / f.duration;
+                if (t <= 0) continue;
+
+                if (t >= 1) {
+                    settledFlowers.push({
+                        x:        f.targetX,
+                        y:        f.targetY,
+                        size:     f.size * 0.72,
+                        rotation: f.rotation,
+                        color:    f.color,
+                        stem:     f.stem,
+                    });
+                    flyingFlowers.splice(i, 1);
+                    if (settledFlowers.length > MAX_SETTLED) settledFlowers.shift();
+                    continue;
+                }
+
+                const eased = 1 - Math.pow(1 - t, 3);
+                const x     = f.startX + (f.targetX - f.startX) * eased;
+                const y     = f.startY + (f.targetY - f.startY) * eased - Math.sin(eased * Math.PI) * 36;
+                const s     = f.size * (1 - eased * 0.55);
+                const alpha = 0.7 - eased * 0.2;
+                drawSoftFlower(x, y, s, f.rotation + eased * 1.4, f.color, alpha, f.stem * (1 - eased * 0.6));
+            }
+
+            // Depth-sorted settled flowers (y ascending = far to near)
+            for (let i = 0; i < settledFlowers.length; i++) {
+                const sf    = settledFlowers[i];
+                const depth = (sf.y - horizonY) / Math.max(1, h - horizonY);
+                const scale = 0.24 + depth * 1.06;
+                const alpha = 0.25 + depth * 0.56;
+                drawSoftFlower(sf.x, sf.y, sf.size * scale, sf.rotation, sf.color, alpha, sf.stem * scale);
+            }
+
+            requestAnimationFrame(renderFieldFrame);
+        }
+
+        // ── Webcam display (mirror video to panel canvas) ──────────────────────
+        function drawWebcamFrame() {
+            if (!video || video.readyState < 2) return;
+            const vw = video.videoWidth, vh = video.videoHeight;
+            if (!vw || !vh) return;
+
+            const size = Math.min(vw, vh);
+            const sx   = (vw - size) / 2;
+            const sy   = (vh - size) / 2;
+
+            const dc = webcamDisplay.getContext('2d');
+            dc.save();
+            dc.translate(220, 0);
+            dc.scale(-1, 1); // mirror for selfie view
+            dc.drawImage(video, sx, sy, size, size, 0, 0, 220, 220);
+            dc.restore();
+        }
+
+        // ── Detection loop ─────────────────────────────────────────────────────
+        function updateLabelStrip(sorted) {
+            labelContainer.innerHTML = "";
+            for (const [emo, prob] of sorted) {
+                const row = document.createElement("div");
+                row.className = "label-item" + (emo === sorted[0][0] ? " top" : "");
+                row.innerHTML = `<span>${emo}</span><span>${(prob * 100).toFixed(1)}%</span>`;
+                labelContainer.appendChild(row);
+            }
+        }
+
+        async function detectLoop() {
+            if (!isRunning) return;
+
+            drawWebcamFrame();
+
+            const now = performance.now();
+            if (!inferInFlight && now - lastDetectAt >= DETECT_INTERVAL) {
+                inferInFlight = true;
+                lastDetectAt  = now;
+
+                try {
+                    const result = await faceapi
+                        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+                        .withFaceExpressions();
+
+                    if (result) {
+                        const sorted = Object.entries(result.expressions)
+                            .sort((a, b) => b[1] - a[1]);
+                        const [topEmo, topConf] = sorted[0];
+
+                        updateLabelStrip(sorted);
+
+                        if (topConf > 0.4) {
+                            emotionName.textContent      = topEmo.toUpperCase();
+                            emotionConfidence.textContent = `${(topConf * 100).toFixed(1)}% confidence`;
+                            spawnFlowerBurst(topEmo, topConf);
+                            sendCmd(EMOTION_TO_CMD[topEmo] || '1');
+                        }
+                    } else {
+                        emotionName.textContent      = '---';
+                        emotionConfidence.textContent = 'No face detected';
+                    }
+                } catch (e) {
+                    console.error('Detection error:', e);
+                }
+
+                inferInFlight = false;
+            }
+
+            requestAnimationFrame(detectLoop);
+        }
+
+        // ── Init ───────────────────────────────────────────────────────────────
+        async function init() {
+            try {
+                startBtn.disabled = true;
+                emotionName.textContent      = "Loading";
+                emotionConfidence.textContent = "Downloading models…";
+
+                await withTimeout(
+                    Promise.all([
+                        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                        faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
+                    ]),
+                    30000,
+                    "Model loading timeout — check your network connection"
+                );
+
+                emotionConfidence.textContent = "Starting camera…";
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                video.srcObject = stream;
+                await new Promise(r => { video.onloadedmetadata = r; });
+                await video.play();
+                await new Promise(r => { video.onplaying = r; setTimeout(r, 500); }); // wait for first frame
+                webcamDisplay.width  = 220;
+                webcamDisplay.height = 220;
+
+                isRunning = true;
+                emotionName.textContent      = "---";
+                emotionConfidence.textContent = "Ready";
+                requestAnimationFrame(detectLoop);
+            } catch (e) {
+                console.error(e);
+                emotionName.textContent      = "ERROR";
+                emotionConfidence.textContent = e.message || "Init failed";
+                startBtn.disabled = false;
+            }
+        }
+
+        // ── Bootstrap ──────────────────────────────────────────────────────────
+        resizeCanvas();
+        window.addEventListener("resize", resizeCanvas);
+        requestAnimationFrame(renderFieldFrame);
+    </script>
+</body>
+</html>
