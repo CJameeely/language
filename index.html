@@ -583,6 +583,8 @@ function onPoseResults(res) {
   if (poseCanvas.height !== H) poseCanvas.height = H;
   poseCtx.save();
   poseCtx.clearRect(0,0,W,H);
+  poseCtx.translate(W, 0);
+  poseCtx.scale(-1, 1);
   poseCtx.drawImage(res.image, 0,0,W,H);
   if (res.poseLandmarks) {
     const L = res.poseLandmarks;
