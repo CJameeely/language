@@ -15,91 +15,193 @@
   --border-hi:#26263c;
   --text:#cac8bc;
   --dim:#585852;
-  --muted:#30302c;
+  --muted:#2e2e2a;
   --accent:#b89660;
   --accent-lo:#42341a;
-  --accent-glow:rgba(184,150,96,.12);
+  --accent-glow:rgba(184,150,96,.14);
   --mono:ui-monospace,'SF Mono','Cascadia Code','Consolas',monospace;
-  --e-angry:#9a4848;
-  --e-happy:#7a9048;
-  --e-neutral:#5a8a6a;
-  --e-sad:#4a6898;
+  /* emotions */
+  --e-angry:#a04848;
+  --e-happy:#789048;
+  --e-neutral:#4a8068;
+  --e-sad:#486898;
+  --e-fearful:#6a5088;
+  --e-surprised:#8a7038;
+  /* body states */
   --b-open:#6a9a5a;
   --b-heavy:#5a587a;
   --b-active:#a88840;
   --b-contracted:#4a6888;
   --b-unbalanced:#9a6a44;
-  --b-neutral:#505050;
+  --b-neutral:#484844;
 }
 
 html,body{width:100%;height:100vh;background:var(--bg);color:var(--text);font-family:var(--mono);overflow:hidden;}
 body{display:flex;flex-direction:column;}
 
-/* HEADER */
-.hd{flex-shrink:0;display:flex;align-items:baseline;gap:18px;padding:13px 26px 10px;border-bottom:1px solid var(--border);}
-.hd-cn{font-size:18px;letter-spacing:.18em;}
-.hd-en{font-size:10px;letter-spacing:.28em;color:var(--dim);text-transform:uppercase;}
-.hd-sub{font-size:9px;letter-spacing:.22em;color:var(--muted);margin-left:auto;}
+/* ── HEADER ── */
+.hd{
+  flex-shrink:0;
+  display:flex;align-items:baseline;gap:20px;
+  padding:14px 28px 11px;
+  border-bottom:1px solid var(--border);
+}
+.hd-cn{font-size:19px;letter-spacing:.2em;}
+.hd-en{font-size:10px;letter-spacing:.3em;color:var(--dim);text-transform:uppercase;}
+.hd-sub{font-size:9px;letter-spacing:.24em;color:var(--muted);margin-left:auto;text-transform:uppercase;}
 
-/* CAMERA */
-.cam-section{flex-shrink:0;height:38vh;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
-#shared-canvas{height:100%;width:auto;display:block;}
-.overlay{position:absolute;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:rgba(7,7,11,.86);transition:opacity .4s;}
+/* ── CAMERA ── */
+.cam-section{
+  flex-shrink:0;height:38vh;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;
+}
+#shared-canvas{height:100%;width:auto;display:block;filter:contrast(1.04) brightness(.96);}
+
+/* scanline overlay */
+.cam-section::after{
+  content:'';
+  position:absolute;inset:0;pointer-events:none;z-index:6;
+  background:repeating-linear-gradient(
+    0deg,
+    transparent 0px,transparent 2px,
+    rgba(0,0,0,.07) 2px,rgba(0,0,0,.07) 3px
+  );
+}
+
+/* vignette */
+.cam-vignette{
+  position:absolute;inset:0;pointer-events:none;z-index:7;
+  background:radial-gradient(ellipse 90% 90% at 50% 50%,transparent 55%,rgba(7,7,11,.55) 100%);
+}
+
+.overlay{
+  position:absolute;inset:0;z-index:10;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(7,7,11,.88);
+  transition:opacity .5s;
+}
 .overlay.gone{opacity:0;pointer-events:none;}
 
-/* THREE COLUMNS */
-.metrics-main{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr 1fr;}
-.col{display:flex;flex-direction:column;padding:14px 20px;overflow:hidden;}
+/* ── DISTORTION ROW ── */
+.distortion-row{
+  flex-shrink:0;height:42px;
+  display:grid;grid-template-columns:1fr 1fr 1fr 200px;
+  border-bottom:1px solid var(--border);
+}
+.dr-cell{
+  display:flex;align-items:center;gap:10px;
+  padding:0 18px;
+  border-right:1px solid var(--border);
+}
+.dr-cell:last-child{border-right:none;}
+.dr-num{font-size:8px;letter-spacing:.12em;color:var(--muted);}
+.dr-emo{
+  font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--dim);
+  transition:color .8s;
+}
+.dr-cn{font-size:8px;letter-spacing:.28em;color:var(--muted);transition:color .8s;}
+
+/* distortion meter */
+.dr-meter{
+  display:flex;align-items:center;gap:9px;
+  padding:0 18px;
+}
+.dr-lbl{font-size:8px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;white-space:nowrap;}
+.dr-track{flex:1;height:1px;background:var(--border-hi);position:relative;}
+.dr-fill{
+  position:absolute;inset:0;
+  background:linear-gradient(90deg,var(--e-neutral),var(--accent));
+  width:0%;
+  transition:width 1.2s cubic-bezier(.4,0,.2,1),background 1.2s;
+}
+.dr-score{
+  font-size:14px;font-weight:300;letter-spacing:.1em;
+  color:var(--dim);font-variant-numeric:tabular-nums;
+  min-width:26px;text-align:right;
+  transition:color 1.2s;
+}
+
+/* ── THREE COLUMNS ── */
+.metrics-main{
+  flex:1;min-height:0;
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+}
+.col{display:flex;flex-direction:column;padding:16px 22px;overflow:hidden;}
 .col-body{border-right:1px solid var(--border);}
 .col-face{border-right:1px solid var(--border);}
 
-.col-hd{display:flex;align-items:baseline;gap:10px;flex-shrink:0;margin-bottom:12px;}
+.col-hd{display:flex;align-items:baseline;gap:10px;flex-shrink:0;margin-bottom:14px;}
 .ch-num{font-size:9px;letter-spacing:.1em;color:var(--muted);}
-.ch-cn{font-size:12px;letter-spacing:.22em;}
-.ch-en{font-size:8px;letter-spacing:.25em;color:var(--muted);text-transform:uppercase;}
+.ch-cn{font-size:12px;letter-spacing:.24em;}
+.ch-en{font-size:8px;letter-spacing:.26em;color:var(--muted);text-transform:uppercase;}
 
-/* METRICS */
-.metrics{display:flex;flex-direction:column;gap:7px;flex-shrink:0;}
-.metric{display:grid;grid-template-columns:100px 1fr 54px;align-items:center;gap:10px;}
-.m-label{display:flex;flex-direction:column;gap:1px;}
+/* metric bars */
+.metrics{display:flex;flex-direction:column;gap:8px;flex-shrink:0;}
+.metric{display:grid;grid-template-columns:100px 1fr 52px;align-items:center;gap:10px;}
+.m-label{display:flex;flex-direction:column;gap:2px;}
 .m-cn{font-size:10px;letter-spacing:.1em;color:var(--dim);}
-.m-en{font-size:7.5px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;}
+.m-en{font-size:7px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;}
 .m-track{height:1px;background:var(--border-hi);}
-.m-fill{height:100%;background:var(--accent);width:0%;transition:width .3s ease;box-shadow:0 0 8px var(--accent-glow);}
+.m-fill{height:100%;background:var(--accent);width:0%;transition:width .3s ease;box-shadow:0 0 10px var(--accent-glow);}
 .m-val{font-size:10px;color:var(--dim);text-align:right;font-variant-numeric:tabular-nums;}
 
-/* DIVIDER */
-.div{height:1px;background:var(--border);flex-shrink:0;margin:10px 0;}
+.div{height:1px;background:var(--border);flex-shrink:0;margin:12px 0;}
 
-/* WAVEFORM */
-.wave-wrap{flex-shrink:0;height:58px;background:var(--surface);border:1px solid var(--border);margin-bottom:10px;overflow:hidden;}
+/* waveform */
+.wave-wrap{flex-shrink:0;height:60px;background:var(--surface);border:1px solid var(--border);margin-bottom:12px;overflow:hidden;}
 .wave-canvas{display:block;width:100%;height:100%;}
 
-/* ML LOADER */
-.ml-loader{flex-shrink:0;display:flex;align-items:center;gap:10px;overflow:hidden;max-height:28px;opacity:1;transition:opacity .5s,max-height .5s;margin-bottom:8px;}
+/* ML loader */
+.ml-loader{flex-shrink:0;display:flex;align-items:center;gap:10px;overflow:hidden;max-height:28px;opacity:1;transition:opacity .5s,max-height .5s;margin-bottom:10px;}
 .ml-loader.hidden{opacity:0;max-height:0;pointer-events:none;}
 .ml-lbl{font-size:8px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;white-space:nowrap;flex-shrink:0;}
 .ml-track{flex:1;height:1px;background:var(--border-hi);}
 .ml-fill{height:100%;background:var(--accent);width:0%;transition:width .4s;}
 .ml-pct{font-size:8px;color:var(--muted);white-space:nowrap;flex-shrink:0;font-variant-numeric:tabular-nums;}
 
-/* EMOTION */
-.emotion{flex:1;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;}
-.emo-label{font-size:8px;letter-spacing:.32em;color:var(--muted);text-transform:uppercase;}
-.emo-en{font-size:clamp(18px,2.2vw,40px);font-weight:300;letter-spacing:.38em;text-transform:uppercase;color:var(--accent);transition:color .9s,opacity .25s;}
-.emo-cn{font-size:clamp(11px,1.2vw,16px);letter-spacing:.5em;color:var(--dim);transition:color .9s;}
-.emo-en.fade{opacity:.1;}
+/* emotion display */
+.emotion{
+  flex:1;min-height:70px;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:8px;
+}
+.emo-label{font-size:8px;letter-spacing:.34em;color:var(--muted);text-transform:uppercase;}
+.emo-en{
+  font-size:clamp(20px,2.4vw,44px);
+  font-weight:300;letter-spacing:.42em;text-transform:uppercase;
+  color:var(--accent);
+  transition:color .9s,opacity .25s,text-shadow .9s;
+}
+.emo-cn{
+  font-size:clamp(12px,1.3vw,17px);
+  letter-spacing:.55em;color:var(--dim);
+  transition:color .9s;
+}
+.emo-en.fade{opacity:.08;}
 
-/* BUTTON */
-.btn{background:transparent;border:1px solid var(--border-hi);color:var(--dim);padding:7px 18px;font-family:var(--mono);font-size:10px;letter-spacing:.22em;cursor:pointer;transition:border-color .2s,color .2s;}
+/* button */
+.btn{
+  background:transparent;border:1px solid var(--border-hi);
+  color:var(--dim);padding:7px 18px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.22em;
+  cursor:pointer;transition:border-color .2s,color .2s;
+}
 .btn:hover{border-color:var(--accent-lo);color:var(--accent);}
-.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
 
-/* FOOTER */
-.ft{flex-shrink:0;display:flex;align-items:center;gap:18px;padding:7px 20px;border-top:1px solid var(--border);}
-.sig{display:flex;align-items:center;gap:6px;font-size:8px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;}
-.dot{width:4px;height:4px;border-radius:50%;background:var(--muted);transition:background .4s,box-shadow .4s;}
-.dot.on{background:var(--accent);box-shadow:0 0 6px var(--accent);}
+/* footer */
+.ft{
+  flex-shrink:0;
+  display:flex;align-items:center;gap:20px;
+  padding:8px 22px;border-top:1px solid var(--border);
+}
+.sig{display:flex;align-items:center;gap:7px;font-size:8px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;}
+.dot{width:4px;height:4px;border-radius:50%;background:var(--muted);transition:background .5s,box-shadow .5s;}
+.dot.on{background:var(--accent);box-shadow:0 0 8px var(--accent);}
 .ts{font-size:8px;color:var(--muted);margin-left:auto;font-variant-numeric:tabular-nums;}
 
 </style>
@@ -109,14 +211,39 @@ body{display:flex;flex-direction:column;}
 <header class="hd">
   <span class="hd-cn">语言失真</span>
   <span class="hd-en">Language Distortion</span>
-  <span class="hd-sub">肢体语态 · 面部表情 · 情绪代偿</span>
+  <span class="hd-sub">肢体 · 面部 · 语音 · 情绪失真</span>
 </header>
 
 <div class="cam-section">
   <video id="video" playsinline muted style="display:none"></video>
   <canvas id="shared-canvas"></canvas>
+  <div class="cam-vignette"></div>
   <div class="overlay" id="cam-overlay">
     <button class="btn" id="btn-start" onclick="startAll()">启动摄像头</button>
+  </div>
+</div>
+
+<!-- DISTORTION ROW -->
+<div class="distortion-row">
+  <div class="dr-cell">
+    <span class="dr-num">01</span>
+    <span class="dr-emo" id="dr-body-emo">—</span>
+    <span class="dr-cn"  id="dr-body-cn">身体</span>
+  </div>
+  <div class="dr-cell">
+    <span class="dr-num">02</span>
+    <span class="dr-emo" id="dr-face-emo">—</span>
+    <span class="dr-cn"  id="dr-face-cn">面部</span>
+  </div>
+  <div class="dr-cell">
+    <span class="dr-num">03</span>
+    <span class="dr-emo" id="dr-voice-emo">—</span>
+    <span class="dr-cn"  id="dr-voice-cn">语音</span>
+  </div>
+  <div class="dr-cell dr-meter">
+    <span class="dr-lbl">失真</span>
+    <div class="dr-track"><div class="dr-fill" id="dr-fill"></div></div>
+    <span class="dr-score" id="dr-score">—</span>
   </div>
 </div>
 
@@ -126,7 +253,7 @@ body{display:flex;flex-direction:column;}
     <div class="col-hd">
       <span class="ch-num">01</span>
       <span class="ch-cn">身体语态</span>
-      <span class="ch-en">Body Posture · LMA</span>
+      <span class="ch-en">Body · LMA</span>
     </div>
     <div class="metrics">
       <div class="metric">
@@ -162,7 +289,7 @@ body{display:flex;flex-direction:column;}
     <div class="col-hd">
       <span class="ch-num">02</span>
       <span class="ch-cn">面部表情</span>
-      <span class="ch-en">Face Expression</span>
+      <span class="ch-en">Face · Expression</span>
     </div>
     <div class="metrics">
       <div class="metric">
@@ -203,7 +330,7 @@ body{display:flex;flex-direction:column;}
     <div class="col-hd">
       <span class="ch-num">03</span>
       <span class="ch-cn">语音语调</span>
-      <span class="ch-en">Voice Tone · ML Emotion</span>
+      <span class="ch-en">Voice · ML Emotion</span>
     </div>
     <div class="wave-wrap">
       <canvas class="wave-canvas" id="wave-canvas"></canvas>
@@ -245,7 +372,8 @@ body{display:flex;flex-direction:column;}
   <div class="sig"><div class="dot" id="dot-face"></div><span>Face</span></div>
   <div class="sig"><div class="dot" id="dot-audio"></div><span>Audio</span></div>
   <div class="sig"><div class="dot" id="dot-ml"></div><span>ML</span></div>
-  <button class="btn" id="btn-mic" onclick="startMic()" style="margin-left:16px">启动麦克风</button>
+  <button class="btn" id="btn-mic" onclick="startMic()" style="margin-left:10px">启动麦克风</button>
+  <button class="btn" id="btn-ard" onclick="connectArduino()" style="margin-left:4px">连接 Arduino</button>
   <div class="ts" id="ts">—</div>
 </footer>
 
@@ -257,28 +385,96 @@ body{display:flex;flex-direction:column;}
 <script>
 'use strict';
 
-/* UTILITIES */
+/* ══════════════════════════════════════════
+   UTILITIES
+══════════════════════════════════════════ */
 const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 const lerp=(a,b,t)=>a+(b-a)*t;
 function setBar(id,v){document.getElementById('b-'+id).style.width=clamp(v,0,1)*100+'%';}
 function setVal(id,t){document.getElementById('v-'+id).textContent=t;}
 function pct(v){return Math.round(v*100).toString();}
+
 function applyEmo(enId,cnId,enText,cnText,col){
   const en=document.getElementById(enId),cn=document.getElementById(cnId);
   en.classList.add('fade');
-  setTimeout(()=>{en.textContent=enText;cn.textContent=cnText;en.style.color=col;cn.style.color=col;en.classList.remove('fade');},260);
+  setTimeout(()=>{
+    en.textContent=enText; cn.textContent=cnText;
+    en.style.color=col; cn.style.color=col;
+    en.style.textShadow=`0 0 38px ${col}44`;
+    en.classList.remove('fade');
+  },260);
 }
 
-/* DOM */
+/* ══════════════════════════════════════════
+   DISTORTION ENGINE
+══════════════════════════════════════════ */
+/* valence map: -1 (negative) → +1 (positive) */
+const VALENCE={
+  neutral:0, open:.7, heavy:-.55, active:.3, contracted:-.6, unbalanced:-.25,
+  happy:.88, sad:-.78, angry:-.68, fearful:-.48, disgusted:-.58, surprised:.28,
+};
+
+/* integer index for Arduino output */
+const BODY_IDX={neutral:0,open:1,heavy:2,active:3,contracted:4,unbalanced:5};
+const FACE_IDX={neutral:0,happy:1,sad:2,angry:3,fearful:3,disgusted:3,surprised:1};
+const VOICE_IDX={neutral:0,happy:1,sad:2,angry:3};
+
+let drBodyKey='neutral', drFaceKey='neutral', drVoiceKey='neutral';
+let distortionValue=0;
+
+function calcDistortion(bKey,fKey,vKey){
+  const bv=VALENCE[bKey]??0, fv=VALENCE[fKey]??0, vv=VALENCE[vKey]??0;
+  const mean=(bv+fv+vv)/3;
+  const variance=((bv-mean)**2+(fv-mean)**2+(vv-mean)**2)/3;
+  return Math.min(99,Math.round(Math.sqrt(variance)*105));
+}
+
+function updateDistortionRow(){
+  const d=calcDistortion(drBodyKey,drFaceKey,drVoiceKey);
+  distortionValue=d;
+
+  /* color gradient for distortion meter: neutral→accent at low, accent→angry at high */
+  const hue = d<50
+    ? `color-mix(in srgb, var(--e-neutral) ${100-d*2}%, var(--accent) ${d*2}%)`
+    : `color-mix(in srgb, var(--accent) ${100-(d-50)*2}%, var(--e-angry) ${(d-50)*2}%)`;
+
+  document.getElementById('dr-fill').style.width=d+'%';
+  document.getElementById('dr-fill').style.background=
+    d<30?'var(--e-neutral)':d<65?'var(--accent)':'var(--e-angry)';
+  document.getElementById('dr-score').textContent=d.toString().padStart(2,'0');
+  document.getElementById('dr-score').style.color=
+    d<30?'var(--dim)':d<65?'var(--accent)':'var(--e-angry)';
+}
+
+function setDrBody(key,enText,cnText,col){
+  drBodyKey=key;
+  document.getElementById('dr-body-emo').textContent=enText;
+  document.getElementById('dr-body-emo').style.color=col;
+  document.getElementById('dr-body-cn').textContent=cnText;
+  updateDistortionRow();
+}
+function setDrFace(key,enText,cnText,col){
+  drFaceKey=key;
+  document.getElementById('dr-face-emo').textContent=enText;
+  document.getElementById('dr-face-emo').style.color=col;
+  document.getElementById('dr-face-cn').textContent=cnText;
+  updateDistortionRow();
+}
+function setDrVoice(key,enText,cnText,col){
+  drVoiceKey=key;
+  document.getElementById('dr-voice-emo').textContent=enText;
+  document.getElementById('dr-voice-emo').style.color=col;
+  document.getElementById('dr-voice-cn').textContent=cnText;
+  updateDistortionRow();
+}
+
+/* ══════════════════════════════════════════
+   MODULE 1 — POSE (MediaPipe + LMA)
+══════════════════════════════════════════ */
 const videoEl=document.getElementById('video');
 const sharedCvs=document.getElementById('shared-canvas');
 const sharedCtx=sharedCvs.getContext('2d');
-const waveCanvas=document.getElementById('wave-canvas');
-const waveCtx=waveCanvas.getContext('2d');
 
-/* ══════════════════════════════════════════
-   MODULE 1 — POSE
-══════════════════════════════════════════ */
 let poseInst,poseSending=false,prevLM=null;
 const SMOOTH=15,FLOW_WIN=20,DEAD_ZONE=0.02;
 const lmaHistory={openness:[],weight:[],asym:[],flow:[]};
@@ -316,13 +512,13 @@ function onPoseResults(res){
   sharedCtx.scale(-1,1);
   sharedCtx.drawImage(res.image,0,0,W,H);
   if(res.poseLandmarks){
-    drawConnectors(sharedCtx,res.poseLandmarks,POSE_CONNECTIONS,{color:'rgba(184,150,96,.4)',lineWidth:1.2});
-    drawLandmarks(sharedCtx,res.poseLandmarks,{color:'rgba(184,150,96,.75)',fillColor:'rgba(7,7,11,.5)',lineWidth:.8,radius:2.5});
+    drawConnectors(sharedCtx,res.poseLandmarks,POSE_CONNECTIONS,{color:'rgba(184,150,96,.38)',lineWidth:1.2});
+    drawLandmarks(sharedCtx,res.poseLandmarks,{color:'rgba(184,150,96,.7)',fillColor:'rgba(7,7,11,.55)',lineWidth:.8,radius:2.4});
     calcLMA(res.poseLandmarks);
   }
   if(lastFaceResult){
     const box=lastFaceResult.detection.box;
-    sharedCtx.strokeStyle='rgba(184,150,96,.55)';
+    sharedCtx.strokeStyle='rgba(184,150,96,.45)';
     sharedCtx.lineWidth=1;
     sharedCtx.strokeRect(box.x,box.y,box.width,box.height);
   }
@@ -341,6 +537,7 @@ function calcLMA(L){
   if(vis(L,11)&&vis(L,12)){asym=clamp(Math.abs(L[11].y-L[12].y)/0.09,0,1);}
   if(prevLM){let d=0,n=0;[0,11,12,13,14,15,16,23,24].forEach(i=>{if(L[i]&&prevLM[i]&&L[i].visibility>0.3){const dx=L[i].x-prevLM[i].x,dy=L[i].y-prevLM[i].y;d+=Math.sqrt(dx*dx+dy*dy);n++;}});if(n>0)flow=clamp((d/n)/0.014,0,1);}
   prevLM=L.map(lm=>({x:lm.x,y:lm.y,visibility:lm.visibility}));
+
   const sO=deadZone('openness',slidingAvg('openness',openness));
   const sW=deadZone('weight',slidingAvg('weight',weight));
   const sA=deadZone('asym',slidingAvg('asym',asym));
@@ -353,13 +550,14 @@ function calcLMA(L){
 }
 
 const BODY_STATES={
-  open:{en:'OPEN',cn:'开放',col:'var(--b-open)'},
-  heavy:{en:'HEAVY',cn:'沉重',col:'var(--b-heavy)'},
-  active:{en:'ACTIVE',cn:'激活',col:'var(--b-active)'},
+  open:    {en:'OPEN',       cn:'开放',col:'var(--b-open)'},
+  heavy:   {en:'HEAVY',      cn:'沉重',col:'var(--b-heavy)'},
+  active:  {en:'ACTIVE',     cn:'激活',col:'var(--b-active)'},
   contracted:{en:'CONTRACTED',cn:'收缩',col:'var(--b-contracted)'},
   unbalanced:{en:'UNBALANCED',cn:'失衡',col:'var(--b-unbalanced)'},
-  neutral:{en:'NEUTRAL',cn:'中性',col:'var(--b-neutral)'},
+  neutral: {en:'NEUTRAL',    cn:'中性',col:'var(--b-neutral)'},
 };
+
 function classifyBodyState(O,W,As,F){
   if(O>0.55&&W<0.42&&F>0.22)return 'open';
   if(W>0.65&&O<0.42)return 'heavy';
@@ -368,28 +566,34 @@ function classifyBodyState(O,W,As,F){
   if(O<0.28&&F<0.28)return 'contracted';
   return 'neutral';
 }
+
 function updateBodyState(O,W,As,F){
   const k=classifyBodyState(O,W,As,F);
   if(k===curBodyKey||k===pendBodyKey)return;
   pendBodyKey=k;clearTimeout(bodyTimer);
-  bodyTimer=setTimeout(()=>{curBodyKey=pendBodyKey;const s=BODY_STATES[curBodyKey];applyEmo('body-en','body-cn',s.en,s.cn,s.col);},1800);
+  bodyTimer=setTimeout(()=>{
+    curBodyKey=pendBodyKey;
+    const s=BODY_STATES[curBodyKey];
+    applyEmo('body-en','body-cn',s.en,s.cn,s.col);
+    setDrBody(curBodyKey,s.en,s.cn,s.col);
+  },1800);
 }
 
 /* ══════════════════════════════════════════
-   MODULE 2 — FACE
+   MODULE 2 — FACE (face-api.js)
 ══════════════════════════════════════════ */
 let faceRunning=false,faceInFlight=false,lastFaceAt=0;
 const DETECT_INTERVAL=120;
 const FACE_MODEL_URL='https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
 
 const FACE_EMO={
-  neutral:{en:'NEUTRAL',cn:'平静',col:'var(--b-neutral)'},
-  happy:{en:'HAPPY',cn:'开心',col:'var(--e-happy)'},
-  sad:{en:'SAD',cn:'悲伤',col:'var(--e-sad)'},
-  angry:{en:'ANGRY',cn:'愤怒',col:'var(--e-angry)'},
-  disgusted:{en:'DISGUSTED',cn:'厌恶',col:'#7a7a4a'},
-  fearful:{en:'FEARFUL',cn:'恐惧',col:'#6a5a8a'},
-  surprised:{en:'SURPRISED',cn:'惊讶',col:'#8a7040'},
+  neutral:  {en:'NEUTRAL',   cn:'平静',col:'var(--b-neutral)'},
+  happy:    {en:'HAPPY',     cn:'开心',col:'var(--e-happy)'},
+  sad:      {en:'SAD',       cn:'悲伤',col:'var(--e-sad)'},
+  angry:    {en:'ANGRY',     cn:'愤怒',col:'var(--e-angry)'},
+  fearful:  {en:'FEARFUL',   cn:'恐惧',col:'var(--e-fearful)'},
+  disgusted:{en:'DISGUSTED', cn:'厌恶',col:'#7a7a4a'},
+  surprised:{en:'SURPRISED', cn:'惊讶',col:'var(--e-surprised)'},
 };
 const FACE_BARS=['neutral','happy','sad','angry','surprised'];
 
@@ -408,7 +612,11 @@ function faceLoop(){
           lastFaceResult=result;
           updateFaceBars(result.expressions);
           const top=Object.entries(result.expressions).sort((a,b)=>b[1]-a[1])[0];
-          if(top[1]>0.4){const info=FACE_EMO[top[0]]||FACE_EMO.neutral;applyEmo('face-en','face-cn',info.en,info.cn,info.col);}
+          if(top[1]>0.38){
+            const info=FACE_EMO[top[0]]||FACE_EMO.neutral;
+            applyEmo('face-en','face-cn',info.en,info.cn,info.col);
+            setDrFace(top[0],info.en,info.cn,info.col);
+          }
         }else{lastFaceResult=null;}
       })
       .catch(e=>console.error('Face:',e))
@@ -441,16 +649,17 @@ async function startAll(){
 }
 
 /* ══════════════════════════════════════════
-   MODULE 3 — VOICE
+   MODULE 3 — VOICE (Web Audio + ML)
 ══════════════════════════════════════════ */
+const waveCanvas=document.getElementById('wave-canvas');
+const waveCtx=waveCanvas.getContext('2d');
 let audioCtx,analyser,yinDetector=null;
 let rawAudio=new Float32Array(0);
 let voiceSmooth={intensity:0,pitch:0,rhythm:0};
 let mlPipeline=null,mlBusy=false;
 
 async function startMic(){
-  const btn=document.getElementById('btn-mic');
-  btn.disabled=true;
+  const btn=document.getElementById('btn-mic');btn.disabled=true;
   try{
     const stream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
     audioCtx=new(window.AudioContext||window.webkitAudioContext)();
@@ -495,23 +704,21 @@ function runAnalysis(){
 function drawWave(data){
   const W=waveCanvas.width,H=waveCanvas.height;
   waveCtx.clearRect(0,0,W,H);
-  waveCtx.fillStyle='rgba(7,7,11,.4)';waveCtx.fillRect(0,0,W,H);
-  waveCtx.strokeStyle='rgba(24,24,42,.9)';waveCtx.lineWidth=1;
+  waveCtx.fillStyle='rgba(7,7,11,.42)';waveCtx.fillRect(0,0,W,H);
+  waveCtx.strokeStyle='rgba(24,24,42,.8)';waveCtx.lineWidth=1;
   waveCtx.beginPath();waveCtx.moveTo(0,H/2);waveCtx.lineTo(W,H/2);waveCtx.stroke();
-  waveCtx.strokeStyle='rgba(184,150,96,.65)';waveCtx.lineWidth=1.2;
+  waveCtx.strokeStyle='rgba(184,150,96,.6)';waveCtx.lineWidth=1.2;
   waveCtx.beginPath();
   const sw=W/data.length;
   for(let i=0;i<data.length;i++){const y=(data[i]/128)*H/2;i===0?waveCtx.moveTo(0,y):waveCtx.lineTo(i*sw,y);}
   waveCtx.stroke();
 }
 function resizeWave(){waveCanvas.width=waveCanvas.parentElement.clientWidth;waveCanvas.height=waveCanvas.parentElement.clientHeight;}
-window.addEventListener('resize',resizeWave);
-resizeWave();
+window.addEventListener('resize',resizeWave);resizeWave();
 
 function yinFallback(buf,sr){
   const minT=Math.floor(sr/420),maxT=Math.ceil(sr/65);
-  const N=Math.min((buf.length/2)|0,maxT+60);
-  if(N<minT+4)return -1;
+  const N=Math.min((buf.length/2)|0,maxT+60);if(N<minT+4)return -1;
   const d=new Float32Array(N);d[0]=1;let run=0;
   for(let t=1;t<N;t++){let s=0;const lim=Math.min(N,buf.length-t);for(let j=0;j<lim;j++){const x=buf[j]-buf[j+t];s+=x*x;}run+=s;d[t]=run>0?(s*t)/run:1;}
   for(let t=minT;t<Math.min(maxT,N-2);t++){if(d[t]<0.13){while(t+1<N&&d[t+1]<d[t])t++;const a=d[t-1],b=d[t],g=d[t+1],den=2*(2*b-a-g);return sr/(den!==0?t-(g-a)/den:t);}}
@@ -526,7 +733,6 @@ function collectAudio(e){
   joined.set(rawAudio);joined.set(chunk,rawAudio.length);
   rawAudio=joined.length>maxLen?joined.slice(-maxLen):joined;
 }
-
 async function resampleTo16k(input,fromSR){
   if(fromSR===16000)return input;
   const outLen=Math.round(input.length*16000/fromSR);
@@ -554,7 +760,12 @@ async function startML(){
     mlPipeline=await pipeline('audio-classification','Xenova/wav2vec2-base-superb-er',{
       progress_callback(p){
         if(p.progress!=null){const v=Math.round(p.progress);fillEl.style.width=v+'%';pctEl.textContent=v+'%';}
-        if(p.status==='ready'){loader.classList.add('hidden');document.getElementById('dot-ml').classList.add('on');document.getElementById('voice-cn').textContent='等待输入';runMLLoop();}
+        if(p.status==='ready'){
+          loader.classList.add('hidden');
+          document.getElementById('dot-ml').classList.add('on');
+          document.getElementById('voice-cn').textContent='等待输入';
+          runMLLoop();
+        }
       }
     });
   }catch(err){pctEl.textContent='ERR';console.error('ML:',err);}
@@ -569,13 +780,57 @@ function runMLLoop(){
       const chunkLen=Math.min(rawAudio.length,Math.floor(audioCtx.sampleRate*3));
       const r16k=await resampleTo16k(rawAudio.slice(-chunkLen),audioCtx.sampleRate);
       const result=await mlPipeline(r16k,{sampling_rate:16000,topk:4});
-      if(result&&result.length>0){const info=VOICE_EMO[labelToKey(result[0].label)];applyEmo('voice-en','voice-cn',info.en,info.cn,info.col);}
+      if(result&&result.length>0){
+        const key=labelToKey(result[0].label);
+        const info=VOICE_EMO[key];
+        applyEmo('voice-en','voice-cn',info.en,info.cn,info.col);
+        setDrVoice(key,info.en,info.cn,info.col);
+      }
     }catch(e){console.warn('Inference:',e);}
     finally{mlBusy=false;}
   },3000);
 }
 
-/* CLOCK */
+/* ══════════════════════════════════════════
+   ARDUINO — format: "B,F,V,D\n"
+   B = body state index (0-5)
+   F = face emotion index (0-3)
+   V = voice ML index (0-3)
+   D = distortion score (0-99)
+══════════════════════════════════════════ */
+let ardWriter=null;
+
+async function connectArduino(){
+  if(!navigator.serial){alert('请使用 Chrome / Edge（需要 Web Serial API）');return;}
+  const btn=document.getElementById('btn-ard');
+  btn.disabled=true;
+  try{
+    const port=await navigator.serial.requestPort();
+    await port.open({baudRate:9600});
+    const enc=new TextEncoderStream();
+    enc.readable.pipeTo(port.writable);
+    ardWriter=enc.writable.getWriter();
+    await new Promise(r=>setTimeout(r,2000));
+    btn.textContent='Arduino ✓';
+    btn.style.color='var(--b-open)';
+  }catch(e){
+    console.error('Arduino:',e);btn.disabled=false;
+  }
+}
+
+/* send every 500ms: B,F,V,D */
+setInterval(()=>{
+  if(!ardWriter)return;
+  const B=BODY_IDX[drBodyKey]??0;
+  const F=FACE_IDX[drFaceKey]??0;
+  const V=VOICE_IDX[drVoiceKey]??0;
+  const D=distortionValue;
+  ardWriter.write(`${B},${F},${V},${D}\n`).catch(()=>{});
+},500);
+
+/* ══════════════════════════════════════════
+   CLOCK
+══════════════════════════════════════════ */
 setInterval(()=>{
   const n=new Date(),ms=String(n.getMilliseconds()).padStart(3,'0').slice(0,2);
   document.getElementById('ts').textContent=n.toLocaleTimeString('zh',{hour12:false})+'.'+ms;
